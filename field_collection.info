@@ -1,4 +1,3 @@
-; $Id$
 name = Field collection
 description = Provides a field-collection field, to which any number of fields can be attached.
 core = 7.x
