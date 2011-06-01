@@ -745,6 +745,16 @@ function field_collection_field_delete_field($field) {
 }
 
 /**
+ * Implements hook_views_api().
+ */
+function field_collection_views_api() {
+  return array(
+    'api' => '3.0-alpha1',
+    'path' => drupal_get_path('module', 'field_collection') . '/views',
+  );
+}
+
+/**
  * Implements hook_features_pipe_component_alter() for fields.
  */
 function field_collection_features_pipe_field_alter(&$pipe, $data, $export) {
