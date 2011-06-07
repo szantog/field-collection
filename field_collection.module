@@ -93,7 +93,7 @@ function field_collection_item_load($item_id) {
 /**
  * Class for field_collection_item entities.
  */
-class FieldCollectionItemEntity extends EntityDB {
+class FieldCollectionItemEntity extends Entity {
 
   protected $fieldInfo, $hostEntity, $hostEntityId, $hostEntityType;
   protected $langcode;
@@ -262,11 +262,11 @@ class FieldCollectionItemEntity extends EntityDB {
    * fully established, the host entity object is updated automatically to
    * include a reference on this field-collection item durign saving.
    *
-   * @param $create_link
-   *   (internal) If FALSE is passed, creating the link to the host entity
-   *   is skipped.
+   * @param $skip_host_save
+   *   (internal) If TRUE is passed, the host entity is not saved automatically
+   *   and therefore no link is created between the host and the item.
    */
-  public function save($create_link = TRUE) {
+  public function save($skip_host_save = FALSE) {
     $transaction = db_transaction();
     try {
       // Make sure we have a host entity during creation.
@@ -278,13 +278,15 @@ class FieldCollectionItemEntity extends EntityDB {
 
       // Create the link to the host entity.
       $host_entity = $this->hostEntity();
-      if ($is_new && $create_link) {
+      if ($is_new && !$skip_host_save) {
         $host_entity->{$this->field_name}[$this->langcode][] = array('value' => $this->item_id);
       }
       // Always save the host entity, so modules are able to react upon changes
       // to the content of the host and any 'last updated' dates of entities get
       // updated.
-      entity_save($this->hostEntityType, $host_entity);
+      if (!$skip_host_save) {
+        entity_save($this->hostEntityType, $host_entity);
+      }
       return $return;
     }
     catch (Exception $e) {
@@ -492,14 +494,17 @@ function field_collection_field_get_path($field) {
 
 /**
  * Implements hook_field_presave().
+ *
+ * Support saving field-collection items in @code $item['entity'] @endcode. This
+ * may be used to seamlessly create field-collection items during host-entity
+ * creation or to save changes to the host entity and its collections at once.
  */
 function field_collection_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
   foreach ($items as &$item) {
     // In case the entity has been loaded / created, save it and set the id.
-    if (isset($item['entity']) && !empty($item['entity']->is_new)) {
+    if (isset($item['entity'])) {
       $item['entity']->setHostEntity($entity_type, $entity);
-      // Pass FALSE, as we the host entity is already being saved.
-      $item['entity']->save(FALSE);
+      $item['entity']->save(TRUE);
       $item = array('value' => $item['entity']->item_id);
     }
   }
@@ -532,7 +537,41 @@ function field_collection_field_item_to_ids($items) {
  * Implements hook_field_is_empty().
  */
 function field_collection_field_is_empty($item, $field) {
-  return empty($item['value']);
+  if (!empty($item['value'])) {
+    return FALSE;
+  }
+  elseif (isset($item['entity'])) {
+    return field_collection_item_is_empty($item['entity']);
+  }
+  return TRUE;
+}
+
+/**
+ * Determines whether a field-collection item entity is empty based on the collection-fields.
+ */
+function field_collection_item_is_empty(FieldCollectionItemEntity $item) {
+  $instances = field_info_instances('field_collection_item', $item->field_name);
+
+  foreach ($instances as $instance) {
+    $field_name = $instance['field_name'];
+    $field = field_info_field($field_name);
+
+    // Determine the list of languages to iterate on.
+    $languages = field_available_languages('field_collection_item', $field);
+
+    foreach ($languages as $langcode) {
+      if (!empty($item->{$field_name}[$langcode])) {
+        // If at least one collection-field is not empty; the
+        // field-collection-item is not empty.
+        foreach ($item->{$field_name}[$langcode] as $field_item) {
+          if (!module_invoke($field['module'], 'field_is_empty', $field_item, $field)) {
+            return FALSE;
+          }
+        }
+      }
+    }
+  }
+  return TRUE;
 }
 
 /**
@@ -624,7 +663,7 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
     case 'field_collection_list':
 
       foreach ($items as $delta => $item) {
-        if ($field_collection = isset($item['entity']) ? $item['entity'] : field_collection_item_load($item['value'])) {
+        if ($field_collection = field_collection_field_get_entity($item)) {
           $output = l($field_collection->label(), $field_collection->path());
           $links = array();
           foreach (array('edit', 'delete') as $op) {
@@ -644,7 +683,7 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
 
       $element['#attached']['css'][] = drupal_get_path('module', 'field_collection') . '/field_collection_view.css';
       foreach ($items as $delta => $item) {
-        if ($field_collection = isset($item['entity']) ? $item['entity'] : field_collection_item_load($item['value'])) {
+        if ($field_collection = field_collection_field_get_entity($item)) {
           $element[$delta]['entity'] = $field_collection->view();
           $element[$delta]['#theme_wrappers'] = array('field_collection_view');
           $element[$delta]['#attributes']['class'][] = 'field-collection-view';
@@ -713,8 +752,173 @@ function field_collection_field_widget_info() {
     'field_collection_hidden' => array(
       'label' => t('Hidden'),
       'field types' => array('field_collection'),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+        'default value' => FIELD_BEHAVIOR_CUSTOM,
+      ),
+    ),
+    'field_collection_embed' => array(
+      'label' => t('Embedded'),
+      'field types' => array('field_collection'),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+        'default value' => FIELD_BEHAVIOR_DEFAULT,
+      ),
     ),
   );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function field_collection_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  static $recursion = 0;
+
+  switch ($instance['widget']['type']) {
+    case 'field_collection_hidden':
+      return $element;
+
+    case 'field_collection_embed':
+      // If the field-collection item form contains another field-collection,
+      // we might ran into a recursive loop. Prevent that.
+      if ($recursion++ > 3) {
+        drupal_set_message(t('The field-collection item form has not been embedded to avoid recursive loops.'), 'error');
+        return $element;
+      }
+      $field_parents = $element['#field_parents'];
+      $field_name = $element['#field_name'];
+      $language = $element['#language'];
+      $field_collection_item = field_collection_field_get_entity($items[$delta], $field_name);
+
+      // Nest the field-collection-item entity form in a dedicated parent space,
+      // by appending [field_name, langcode, delta] to the current parent space.
+      // That way the form values of the field-collection item are separated.
+      $parents = array_merge($field_parents, array($field_name, $language, $delta));
+
+      $element += array(
+        '#element_validate' => array('field_collection_field_widget_embed_validate'),
+        '#parents' => $parents,
+      );
+
+      // Put our entity in the form state, so FAPI callbacks can access it.
+      $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
+      $field_state['entity'][$delta] = $field_collection_item;
+      field_form_set_state($field_parents, $field_name, $language, $form_state, $field_state);
+
+      field_attach_form('field_collection_item', $field_collection_item, $element, $form_state, $language);
+
+      if (empty($element['#required'])) {
+        $element['#after_build'][] = 'field_collection_field_widget_embed_delay_required_validation';
+      }
+      $recursion--;
+      return $element;
+  }
+}
+
+/**
+ * Gets a field-collection item entity for a given field item.
+ *
+ * @param $field_name
+ *   (optional) If given and there is no entity yet, a new entity object is
+ *   created for the given item.
+ *
+ * @return
+ *   The entity object or FALSE.
+ */
+function field_collection_field_get_entity(&$item, $field_name = NULL) {
+  if (isset($item['value'])) {
+    return field_collection_item_load($item['value']);
+  }
+  elseif (!isset($item['entity']) && isset($field_name)) {
+    $item['entity'] = entity_create('field_collection_item', array('field_name' => $field_name));
+  }
+  return isset($item['entity']) ? $item['entity'] : FALSE;
+}
+
+/**
+ * FAPI #after_build of an individual field-collection element to delay the validation of #required.
+ */
+function field_collection_field_widget_embed_delay_required_validation(&$element, &$form_state) {
+  // If the process_input flag is set, the form and its input is going to be
+  // validated. Prevent #required (sub)fields from throwing errors while
+  // their non-#required field-collection item is empty.
+  if ($form_state['process_input']) {
+    _field_collection_collect_required_elements($element, $element['#field_collection_required_elements']);
+  }
+  return $element;
+}
+
+function _field_collection_collect_required_elements(&$element, &$required_elements) {
+  // Recurse through all children.
+  foreach (element_children($element) as $key) {
+    if (isset($element[$key]) && $element[$key]) {
+      _field_collection_collect_required_elements($element[$key], $required_elements);
+    }
+  }
+  if (!empty($element['#required'])) {
+    $element['#required'] = FALSE;
+    $required_elements[] = &$element;
+    $element += array('#pre_render' => array());
+    array_unshift($element['#pre_render'], 'field_collection_field_widget_render_required');
+  }
+}
+
+/**
+ * #pre_render callback that ensures the element is rendered as being required.
+ */
+function field_collection_field_widget_render_required($element) {
+  $element['#required'] = TRUE;
+  return $element;
+}
+
+/**
+ * FAPI validation of an individual field-collection element.
+ */
+function field_collection_field_widget_embed_validate($element, &$form_state, $complete_form) {
+  $instance = field_widget_instance($element, $form_state);
+  $field = field_widget_field($element, $form_state);
+  $field_parents = $element['#field_parents'];
+  $field_name = $element['#field_name'];
+  $language = $element['#language'];
+
+  $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
+  $field_collection_item = $field_state['entity'][$element['#delta']];
+
+  // Attach field API validation of the embedded form.
+  field_attach_form_validate('field_collection_item', $field_collection_item, $element, $form_state);
+
+  // Now validate required elements if the entity is not empty.
+  if (!field_collection_item_is_empty($field_collection_item) && !empty($element['#field_collection_required_elements'])) {
+    foreach ($element['#field_collection_required_elements'] as &$elements) {
+
+      // Copied from _form_validate().
+      if (isset($elements['#needs_validation'])) {
+        $is_empty_multiple = (!count($elements['#value']));
+        $is_empty_string = (is_string($elements['#value']) && drupal_strlen(trim($elements['#value'])) == 0);
+        $is_empty_value = ($elements['#value'] === 0);
+        if ($is_empty_multiple || $is_empty_string || $is_empty_value) {
+          if (isset($elements['#title'])) {
+            form_error($elements, t('!name field is required.', array('!name' => $elements['#title'])));
+          }
+          else {
+            form_error($elements);
+          }
+        }
+      }
+    }
+  }
+
+  // Only if the form is being submitted, finish the collection entity and
+  // prepare it for saving.
+  if ($form_state['submitted'] && !form_get_errors()) {
+
+    field_attach_submit('field_collection_item', $field_collection_item, $element, $form_state);
+    // Put the field-collection item in $item['entity'], so it is saved with
+    // the host entity via hook_field_presave() / field API if it is not empty.
+    // @see field_collection_field_presave()
+    $item['entity'] = $field_collection_item;
+    form_set_value($element, $item, $form_state);
+  }
 }
 
 /**
