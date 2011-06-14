@@ -454,7 +454,7 @@ function field_collection_theme() {
   return array(
     'field_collection_item' => array(
       'render element' => 'elements',
-      'template' => 'field_collection_item',
+      'template' => 'field-collection-item',
     ),
     'field_collection_view' => array(
       'render element' => 'element',
