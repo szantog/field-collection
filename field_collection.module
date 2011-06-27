@@ -166,13 +166,29 @@ class FieldCollectionItemEntity extends Entity {
 
   /**
    * Sets the host entity. Only possible during creation of a item.
+   *
+   * @param $create_link
+   *   (optional) Whether a field-item linking the host entity to the field
+   *   collection item should be created. Should be only disabled if the link
+   *   is created manually.
    */
-  public function setHostEntity($entity_type, $entity, $langcode = LANGUAGE_NONE) {
+  public function setHostEntity($entity_type, $entity, $langcode = LANGUAGE_NONE, $create_link = TRUE) {
     if (!empty($this->is_new)) {
       $this->hostEntityType = $entity_type;;
       $this->hostEntity = $entity;
       $this->langcode = LANGUAGE_NONE;
       list($this->hostEntityId) = entity_extract_ids($this->hostEntityType, $this->hostEntity);
+      // If the host entity is not saved yet, set the id to FALSE. So
+      // fetchHostDetails() does not try to load the host entity details.
+      if (!isset($this->hostEntityId)) {
+        $this->hostEntityId = FALSE;
+      }
+      if ($create_link) {
+        $entity->{$this->field_name}[$this->langcode][] = array('entity' => $this);
+      }
+    }
+    else {
+      throw new Exception('The host entity may be set only during creation of a field-collection item.');
     }
   }
 
@@ -235,7 +251,7 @@ class FieldCollectionItemEntity extends Entity {
         $this->hostEntityId = FALSE;
       }
     }
-    return !empty($this->hostEntityId);
+    return !empty($this->hostEntityId) || !empty($this->hostEntity);
   }
 
   /**
@@ -243,10 +259,13 @@ class FieldCollectionItemEntity extends Entity {
    * item.
    */
   public function delta() {
-    if ($this->item_id && $entity = $this->hostEntity()) {
+    if (($entity = $this->hostEntity()) && isset($entity->{$this->field_name})) {
       foreach ($entity->{$this->field_name} as $lang => &$data) {
         foreach ($data as $delta => $item) {
-          if ($item['value'] == $this->item_id) {
+          if (isset($item['value']) && $item['value'] == $this->item_id) {
+            return $delta;
+          }
+          elseif (isset($item['entity']) && $item['entity'] === $this) {
             return $delta;
           }
         }
@@ -276,10 +295,16 @@ class FieldCollectionItemEntity extends Entity {
       $is_new = !empty($this->is_new);
       $return = entity_get_controller($this->entityType)->save($this, $transaction);
 
-      // Create the link to the host entity.
+      // Create / update the link to the host entity.
       $host_entity = $this->hostEntity();
       if ($is_new && !$skip_host_save) {
-        $host_entity->{$this->field_name}[$this->langcode][] = array('value' => $this->item_id);
+        $delta = $this->delta();
+        if (isset($delta)) {
+          $host_entity->{$this->field_name}[$this->langcode][$delta] = array('value' => $this->item_id);
+        }
+        else {
+          $host_entity->{$this->field_name}[$this->langcode][] = array('value' => $this->item_id);
+        }
       }
       // Always save the host entity, so modules are able to react upon changes
       // to the content of the host and any 'last updated' dates of entities get
@@ -503,7 +528,7 @@ function field_collection_field_presave($entity_type, $entity, $field, $instance
   foreach ($items as &$item) {
     // In case the entity has been loaded / created, save it and set the id.
     if (isset($item['entity'])) {
-      $item['entity']->setHostEntity($entity_type, $entity);
+      $item['entity']->setHostEntity($entity_type, $entity, LANGUAGE_NONE, FALSE);
       $item['entity']->save(TRUE);
       $item = array('value' => $item['entity']->item_id);
     }
@@ -711,7 +736,7 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
   if ($settings['add'] && ($field['cardinality'] == FIELD_CARDINALITY_UNLIMITED || count($items) < $field['cardinality'])) {
     // Check whether the current is allowed to create a new item.
     $field_collection_item = entity_create('field_collection_item', array('field_name' => $field['field_name']));
-    $field_collection_item->setHostEntity($entity_type, $entity);
+    $field_collection_item->setHostEntity($entity_type, $entity, LANGUAGE_NONE, FALSE);
     if (field_collection_item_access('create', $field_collection_item)) {
       $path = field_collection_field_get_path($field);
       list($id) = entity_extract_ids($entity_type, $entity);

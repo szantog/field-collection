@@ -80,6 +80,25 @@ class FieldCollectionBasicTestCase extends DrupalWebTestCase {
     $node = $this->drupalCreateNode(array('type' => 'article'));
     node_delete($node->nid);
     $this->assertTrue(node_load($node->nid, NULL, TRUE) == FALSE, 'Node without collection values deleted.');
+
+    // Test creating a field-collection entity with a not-yet saved host entity.
+    $node = entity_create('node', array('type' => 'article'));
+    $entity = entity_create('field_collection_item', array('field_name' => $this->field_name));
+    $entity->setHostEntity('node', $node);
+    $entity->save();
+    // Now the node should have been saved with the collection and the link
+    // should have been established.
+    $this->assertTrue(!empty($node->nid), 'Node has been saved with the collection.');
+    $this->assertTrue(count($node->{$this->field_name}[LANGUAGE_NONE]) == 1 && !empty($node->{$this->field_name}[LANGUAGE_NONE][0]['value']), 'Link has been established.');
+
+    // Again, test creating a field-collection with a not-yet saved host entity,
+    // but this time save both entities via the host.
+    $node = entity_create('node', array('type' => 'article'));
+    $entity = entity_create('field_collection_item', array('field_name' => $this->field_name));
+    $entity->setHostEntity('node', $node);
+    node_save($node);
+    $this->assertTrue(!empty($entity->item_id), 'Collection has been saved with the host.');
+    $this->assertTrue(count($node->{$this->field_name}[LANGUAGE_NONE]) == 1 && !empty($node->{$this->field_name}[LANGUAGE_NONE][0]['value']), 'Link has been established.');
   }
 
   /**
