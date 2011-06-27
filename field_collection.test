@@ -186,9 +186,12 @@ class FieldCollectionRulesIntegrationTestCase extends DrupalWebTestCase {
 
   function setUp() {
     parent::setUp(array('field_collection', 'rules'));
+  }
+
+  protected function createFields($cardinality = 4) {
     // Create a field_collection field to use for the tests.
     $this->field_name = 'field_test_collection';
-    $this->field = array('field_name' => $this->field_name, 'type' => 'field_collection', 'cardinality' => 4);
+    $this->field = array('field_name' => $this->field_name, 'type' => 'field_collection', 'cardinality' => $cardinality);
     $this->field = field_create_field($this->field);
     $this->field_id = $this->field['id'];
 
@@ -231,6 +234,8 @@ class FieldCollectionRulesIntegrationTestCase extends DrupalWebTestCase {
    * Test creation field collection items.
    */
   function testCreation() {
+    $this->createFields();
+
     $node = $this->drupalCreateNode(array('type' => 'article'));
     // Create a field collection.
     $action_set = rules_action_set(array('node' => array('type' => 'node', 'bundle' => 'article')));
@@ -253,6 +258,32 @@ class FieldCollectionRulesIntegrationTestCase extends DrupalWebTestCase {
 
     $msg = drupal_get_messages();
     $this->assertEqual(array_pop($msg['status']), 'foo', 'Field-collection can be used.');
+    RulesLog::logger()->checkLog();
+  }
+
+  /**
+   * Test using field collection items via the host while they are being created.
+   */
+  function testUsageDuringCreation() {
+    // Test using a single-cardinality field-collection.
+    $this->createFields(1);
+
+    $node = $this->drupalCreateNode(array('type' => 'article'));
+    $entity = entity_create('field_collection_item', array('field_name' => $this->field_name));
+    $entity->setHostEntity('node', $node);
+    // Now the field-collection is linked to the host, but not yet saved.
+
+    // Test using the wrapper on it.
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $wrapper->get($this->field_name)->field_text->set('foo');
+    $this->assertEqual($entity->field_text[LANGUAGE_NONE][0]['value'], 'foo', 'Field-collection item used during creation via the wrapper.');
+
+    // Now test it via Rules, which should save our changes.
+    $set = rules_action_set(array('node' => array('type' => 'node', 'bundle' => 'article')));
+    $set->action('data_set', array('data:select' => 'node:' . $this->field_name . ':field-text', 'value' => 'bar'));
+    $set->execute($node);
+    $this->assertEqual($entity->field_text[LANGUAGE_NONE][0]['value'], 'bar', 'Field-collection item used during creation via Rules.');
+    $this->assertTrue(!empty($entity->item_id), 'Field-collection item has been saved by Rules and the host entity.');
     RulesLog::logger()->checkLog();
   }
 }
