@@ -528,7 +528,9 @@ function field_collection_field_presave($entity_type, $entity, $field, $instance
   foreach ($items as &$item) {
     // In case the entity has been loaded / created, save it and set the id.
     if (isset($item['entity'])) {
-      $item['entity']->setHostEntity($entity_type, $entity, LANGUAGE_NONE, FALSE);
+      if (!empty($item['entity']->is_new)) {
+        $item['entity']->setHostEntity($entity_type, $entity, LANGUAGE_NONE, FALSE);
+      }
       $item['entity']->save(TRUE);
       $item = array('value' => $item['entity']->item_id);
     }
