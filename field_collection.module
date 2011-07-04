@@ -102,8 +102,8 @@ class FieldCollectionItemEntity extends Entity {
 
   public function __construct(array $values = array(), $entityType = NULL) {
     parent::__construct($values, 'field_collection_item');
-    $this->fieldInfo = field_info_field($this->field_name);
-    if (!$this->fieldInfo || $this->fieldInfo['type'] != 'field_collection') {
+    $field_info = $this->fieldInfo();
+    if (!$field_info || $field_info['type'] != 'field_collection') {
       throw new Exception("Invalid field name given.");
     }
   }
@@ -113,7 +113,7 @@ class FieldCollectionItemEntity extends Entity {
    * field-collection item.
    */
   public function fieldInfo() {
-    return $this->fieldInfo;
+    return field_info_field($this->field_name);
   }
 
   /**
@@ -151,7 +151,7 @@ class FieldCollectionItemEntity extends Entity {
    */
   public function path() {
     if ($this->item_id) {
-      return field_collection_field_get_path($this->fieldInfo) . '/' . $this->item_id;
+      return field_collection_field_get_path($this->fieldInfo()) . '/' . $this->item_id;
     }
   }
 
@@ -336,6 +336,32 @@ class FieldCollectionItemEntity extends Entity {
       }
       entity_save($this->hostEntityType(), $entity);
     }
+  }
+
+  /**
+   * Magic method to only serialize what's necessary.
+   */
+  public function __sleep() {
+    $vars = get_object_vars($this);
+    unset($vars['entityInfo'], $vars['idKey'], $vars['nameKey'], $vars['statusKey']);
+    unset($vars['fieldInfo']);
+    // Also do not serialize the host entity, but only if it has already an id.
+    if ($this->hostEntity && $this->hostEntityId) {
+      unset($vars['hostEntity']);
+    }
+
+    // Also key the returned array with the variable names so the method may
+    // be easily overridden and customized.
+    return drupal_map_assoc(array_keys($vars));
+  }
+
+  /**
+   * Magic method to invoke setUp() on unserialization.
+   *
+   * @todo: Remove this once it appears in a released entity API module version.
+   */
+  public function __wakeup() {
+    $this->setUp();
   }
 }
 
