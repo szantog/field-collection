@@ -662,31 +662,31 @@ function field_collection_field_formatter_settings_form($field, $instance, $view
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
 
-  $form['edit'] = array(
+  $elements['edit'] = array(
     '#type' => 'textfield',
     '#title' => t('Edit link title'),
     '#default_value' => $settings['edit'],
     '#description' => t('Leave the title empty, to hide the link.'),
   );
-  $form['delete'] = array(
+  $elements['delete'] = array(
     '#type' => 'textfield',
     '#title' => t('Delete link title'),
     '#default_value' => $settings['delete'],
     '#description' => t('Leave the title empty, to hide the link.'),
   );
-  $form['add'] = array(
+  $elements['add'] = array(
     '#type' => 'textfield',
     '#title' => t('Add link title'),
     '#default_value' => $settings['add'],
     '#description' => t('Leave the title empty, to hide the link.'),
   );
-  $form['description'] = array(
+  $elements['description'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show the field description beside the add link.'),
     '#default_value' => $settings['description'],
     '#description' => t('If enabeld adn the add link is shown, the field description is shown in front of the add link.'),
   );
-  return $form;
+  return $elements;
 }
 
 /**
