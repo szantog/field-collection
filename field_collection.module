@@ -684,7 +684,7 @@ function field_collection_field_formatter_settings_form($field, $instance, $view
     '#type' => 'checkbox',
     '#title' => t('Show the field description beside the add link.'),
     '#default_value' => $settings['description'],
-    '#description' => t('If enabeld adn the add link is shown, the field description is shown in front of the add link.'),
+    '#description' => t('If enabled and the add link is shown, the field description is shown in front of the add link.'),
   );
   return $elements;
 }
