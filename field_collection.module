@@ -761,6 +761,17 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
       break;
   }
 
+  field_collection_field_formatter_links($element, $entity_type, $entity, $field, $instance, $langcode, $items, $display);
+
+  return $element;
+}
+
+/**
+ * Helper function to add links to a field collection field.
+ */
+function field_collection_field_formatter_links(&$element, $entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $settings = $display['settings'];
+
   if ($settings['add'] && ($field['cardinality'] == FIELD_CARDINALITY_UNLIMITED || count($items) < $field['cardinality'])) {
     // Check whether the current is allowed to create a new item.
     $field_collection_item = entity_create('field_collection_item', array('field_name' => $field['field_name']));
