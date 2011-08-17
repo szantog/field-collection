@@ -13,7 +13,7 @@
 function field_collection_item_page_view($field_collection_item) {
   // @todo: Set breadcrumb including the host.
   drupal_set_title($field_collection_item->label());
-  return $field_collection_item->view();
+  return $field_collection_item->view('full', NULL, TRUE);
 }
 
 /**
