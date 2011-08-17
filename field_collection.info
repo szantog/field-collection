@@ -5,3 +5,4 @@ dependencies[] = entity
 files[] = field_collection.test
 files[] = field_collection.info.inc
 configure = admin/structure/field-collections
+package = Fields
