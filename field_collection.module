@@ -169,8 +169,7 @@ class FieldCollectionItemEntity extends Entity {
    *
    * @param $create_link
    *   (optional) Whether a field-item linking the host entity to the field
-   *   collection item should be created. Should be only disabled if the link
-   *   is created manually.
+   *   collection item should be created.
    */
   public function setHostEntity($entity_type, $entity, $langcode = LANGUAGE_NONE, $create_link = TRUE) {
     if (!empty($this->is_new)) {
