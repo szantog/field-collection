@@ -733,7 +733,7 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
 
     case 'field_collection_view':
 
-      $element['#attached']['css'][] = drupal_get_path('module', 'field_collection') . '/field_collection_view.css';
+      $element['#attached']['css'][] = drupal_get_path('module', 'field_collection') . '/field_collection.theme.css';
       foreach ($items as $delta => $item) {
         if ($field_collection = field_collection_field_get_entity($item)) {
           $element[$delta]['entity'] = $field_collection->view();
