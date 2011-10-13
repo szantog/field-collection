@@ -816,7 +816,7 @@ function field_collection_field_formatter_links(&$element, $entity_type, $entity
   }
 
   $element += array('#prefix' => '', '#suffix' => '');
-  $element['#prefix'] .= '<div class="field-collection-container clearfix">';
+  $element['#prefix'] .= '<div id="collection-' . $instance['field_id'] . '" class="field-collection-container clearfix">';
   $element['#suffix'] .= '</div>';
 
   return $element;
@@ -858,7 +858,13 @@ function field_collection_field_widget_info() {
  * Implements hook_field_widget_form().
  */
 function field_collection_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  static $recursion = 0;
+  //verifies that there is more than one item, and checks if the rendered item added during page load. Additional
+  //"Add another item" will not be affected
+	if (count($items) > 0 && $delta == count($items)) {
+		return FALSE;
+	}
+
+	static $recursion = 0;;
 
   switch ($instance['widget']['type']) {
     case 'field_collection_hidden':
