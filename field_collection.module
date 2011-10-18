@@ -44,29 +44,23 @@ function field_collection_entity_info() {
     'access callback' => 'field_collection_item_access',
     'metadata controller class' => 'FieldCollectionItemMetadataController'
   );
-  return $return;
-}
 
-/**
- * Implements hook_entity_info_alter().
- */
-function field_collection_entity_info_alter(&$info) {
-  // Add info about the bundles. We need to this in hook_entity_info_alter()
-  // to avoid infinite recursion, as field_info_fields() causes
-  // hook_entity_info() to be invoked.
-  foreach (field_info_fields() as $field_name => $field) {
-    if ($field['type'] == 'field_collection') {
-      $info['field_collection_item']['bundles'][$field_name] = array(
-        'label' => t('Field-collection @field', array('@field' => $field_name)),
-        'admin' => array(
-          'path' => 'admin/structure/field-collections/%field_collection_field_name',
-          'real path' => 'admin/structure/field-collections/' . strtr($field_name, array('_' => '-')),
-          'bundle argument' => 3,
-          'access arguments' => array('administer field-collections'),
-        ),
-      );
-    }
+  // Add info about the bundles. We do not use field_info_fields() but directly
+  // use field_read_fields() as field_info_fields() requires built entity info
+  // to work.
+  foreach (field_read_fields(array('type' => 'field_collection')) as $field_name => $field) {
+    $return['field_collection_item']['bundles'][$field_name] = array(
+      'label' => t('Field-collection @field', array('@field' => $field_name)),
+      'admin' => array(
+        'path' => 'admin/structure/field-collections/%field_collection_field_name',
+        'real path' => 'admin/structure/field-collections/' . strtr($field_name, array('_' => '-')),
+        'bundle argument' => 3,
+        'access arguments' => array('administer field-collections'),
+      ),
+    );
   }
+
+  return $return;
 }
 
 /**
