@@ -3,7 +3,7 @@
 /**
  * Implements hook_field_views_data().
  *
- * Views integration for field-collection fields. Adds a relationship to the
+ * Views integration for field collection fields. Adds a relationship to the
  * default field data.
  *
  * @see field_views_field_default_views_data()
@@ -19,7 +19,7 @@ function field_collection_field_views_data($field) {
           'handler' => 'views_handler_relationship',
           'base' => 'field_collection_item',
           'base field' => 'item_id',
-          'label' => t('field-collection item from !field_name', array('!field_name' => $field['field_name'])),
+          'label' => t('field collection item from !field_name', array('!field_name' => $field['field_name'])),
         );
       }
     }

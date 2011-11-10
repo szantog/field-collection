@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Module implementing field-collection field type.
+ * Module implementing field collection field type.
  */
 
 /**
@@ -13,7 +13,7 @@ function field_collection_help($path, $arg) {
     case 'admin/help#field_collection':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('The field-collection module provides a field, to which any number of fields can be attached. See the <a href="@field-help">Field module help page</a> for more information about fields.', array('@field-help' => url('admin/help/field'))) . '</p>';
+      $output .= '<p>' . t('The field collection module provides a field, to which any number of fields can be attached. See the <a href="@field-help">Field module help page</a> for more information about fields.', array('@field-help' => url('admin/help/field'))) . '</p>';
       return $output;
   }
 }
@@ -23,7 +23,7 @@ function field_collection_help($path, $arg) {
  */
 function field_collection_entity_info() {
   $return['field_collection_item'] = array(
-    'label' => t('Field-collection item'),
+    'label' => t('Field collection item'),
     'label callback' => 'entity_class_label',
     'uri callback' => 'entity_class_uri',
     'entity class' => 'FieldCollectionItemEntity',
@@ -50,12 +50,12 @@ function field_collection_entity_info() {
   // to work.
   foreach (field_read_fields(array('type' => 'field_collection')) as $field_name => $field) {
     $return['field_collection_item']['bundles'][$field_name] = array(
-      'label' => t('Field-collection @field', array('@field' => $field_name)),
+      'label' => t('Field collection @field', array('@field' => $field_name)),
       'admin' => array(
         'path' => 'admin/structure/field-collections/%field_collection_field_name',
         'real path' => 'admin/structure/field-collections/' . strtr($field_name, array('_' => '-')),
         'bundle argument' => 3,
-        'access arguments' => array('administer field-collections'),
+        'access arguments' => array('administer field collections'),
       ),
     );
   }
@@ -74,10 +74,10 @@ function field_collection_field_name_load($arg) {
 }
 
 /**
- * Loads a field-collection item.
+ * Loads a field collection item.
  *
  * @return field_collection_item
- *   The field-collection item entity or FALSE.
+ *   The field collection item entity or FALSE.
  */
 function field_collection_item_load($item_id, $reset = FALSE) {
   $result = field_collection_item_load_multiple(array($item_id), array(), $reset);
@@ -85,10 +85,10 @@ function field_collection_item_load($item_id, $reset = FALSE) {
 }
 
 /**
- * Loads field-collection items.
+ * Loads field collection items.
  *
  * @return
- *   An array of field-collection item entities.
+ *   An array of field collection item entities.
  */
 function field_collection_item_load_multiple($ids = array(), $conditions = array(), $reset = FALSE) {
   return entity_load('field_collection_item', $ids, $conditions, $reset);
@@ -114,7 +114,7 @@ class FieldCollectionItemEntity extends Entity {
 
   /**
    * Provides info about the field on the host entity, which embeds this
-   * field-collection item.
+   * field collection item.
    */
   public function fieldInfo() {
     return field_info_field($this->field_name);
@@ -122,7 +122,7 @@ class FieldCollectionItemEntity extends Entity {
 
   /**
    * Provides info of the field instance containing the reference to this
-   * field-collection item.
+   * field collection item.
    */
   public function instanceInfo() {
     if ($this->fetchHostDetails()) {
@@ -147,7 +147,7 @@ class FieldCollectionItemEntity extends Entity {
         return t('New !instance_label', array('!instance_label' => $instance['label']));
       }
     }
-    return t('Unconnected field-collection item');
+    return t('Unconnected field collection item');
   }
 
   /**
@@ -191,12 +191,12 @@ class FieldCollectionItemEntity extends Entity {
       }
     }
     else {
-      throw new Exception('The host entity may be set only during creation of a field-collection item.');
+      throw new Exception('The host entity may be set only during creation of a field collection item.');
     }
   }
 
   /**
-   * Returns the host entity, which embeds this field-collection item.
+   * Returns the host entity, which embeds this field collection item.
    */
   public function hostEntity() {
     if ($this->fetchHostDetails()) {
@@ -210,7 +210,7 @@ class FieldCollectionItemEntity extends Entity {
 
   /**
    * Returns the entity type of the host entity, which embeds this
-   * field-collection item.
+   * field collection item.
    */
   public function hostEntityType() {
     if ($this->fetchHostDetails()) {
@@ -219,7 +219,7 @@ class FieldCollectionItemEntity extends Entity {
   }
 
   /**
-   * Returns the id of the host entity, which embeds this field-collection item.
+   * Returns the id of the host entity, which embeds this field collection item.
    */
   public function hostEntityId() {
     if ($this->fetchHostDetails()) {
@@ -228,7 +228,7 @@ class FieldCollectionItemEntity extends Entity {
   }
 
   /**
-   * Returns the bundle of the host entity, which embeds this field-collection
+   * Returns the bundle of the host entity, which embeds this field collection
    * item.
    */
   public function hostEntityBundle() {
@@ -241,7 +241,7 @@ class FieldCollectionItemEntity extends Entity {
   protected function fetchHostDetails() {
     if (!isset($this->hostEntityId)) {
       if ($this->item_id) {
-        // For saved field-collections, query the field data to determine the
+        // For saved field collections, query the field data to determine the
         // right host entity.
         $query = new EntityFieldQuery();
         $query->fieldCondition($this->fieldInfo(), 'value', $this->item_id);
@@ -258,7 +258,7 @@ class FieldCollectionItemEntity extends Entity {
   }
 
   /**
-   * Determines the $delta of the reference pointing to this field-collection
+   * Determines the $delta of the reference pointing to this field collection
    * item.
    */
   public function delta() {
@@ -277,12 +277,12 @@ class FieldCollectionItemEntity extends Entity {
   }
 
   /**
-   * Save the field-collection item.
+   * Save the field collection item.
    *
    * During creation a host entity has to be specified via the setHostEntity()
    * before this function is invoked. For the link between the entities to be
    * fully established, the host entity object is updated automatically to
-   * include a reference on this field-collection item durign saving.
+   * include a reference on this field collection item durign saving.
    *
    * @param $skip_host_save
    *   (internal) If TRUE is passed, the host entity is not saved automatically
@@ -293,7 +293,7 @@ class FieldCollectionItemEntity extends Entity {
     try {
       // Make sure we have a host entity during creation.
       if (!empty($this->is_new) && !(isset($this->hostEntityId) || isset($this->hostEntity))) {
-        throw new Exception("Unable to create a field-collection item without a given host entity.");
+        throw new Exception("Unable to create a field collection item without a given host entity.");
       }
       $is_new = !empty($this->is_new);
       $return = entity_get_controller($this->entityType)->save($this, $transaction);
@@ -324,7 +324,7 @@ class FieldCollectionItemEntity extends Entity {
   }
 
   /**
-   * Delete the field-collection item.
+   * Delete the field collection item.
    */
   public function delete() {
     parent::delete();
@@ -375,16 +375,16 @@ function field_collection_menu() {
   $items = array();
   if (module_exists('field_ui')) {
     $items['admin/structure/field-collections'] = array(
-      'title' => 'Field-collections',
-      'description' => 'Manage fields on field-collections.',
+      'title' => 'Field collections',
+      'description' => 'Manage fields on field collections.',
       'page callback' => 'field_collections_overview',
-      'access arguments' => array('administer field-collections'),
+      'access arguments' => array('administer field collections'),
       'type' => MENU_NORMAL_ITEM,
       'file' => 'field_collection.admin.inc',
     );
   }
 
-  // Add menu paths for viewing/editing/deleting field-collection items.
+  // Add menu paths for viewing/editing/deleting field collection items.
   foreach (field_info_fields() as $field) {
     if ($field['type'] == 'field_collection') {
       $path = field_collection_field_get_path($field);
@@ -448,7 +448,7 @@ function field_collection_menu() {
 }
 
 /**
- * Implements hook_menu_alter() to fix the field-collections admin UI tabs.
+ * Implements hook_menu_alter() to fix the field collections admin UI tabs.
  */
 function field_collection_menu_alter(&$items) {
   if (module_exists('field_ui') && isset($items['admin/structure/field-collections/%field_collection_field_name/fields'])) {
@@ -493,9 +493,9 @@ function field_collection_admin_paths() {
  */
 function field_collection_permission() {
   return array(
-    'administer field-collections' =>  array(
-      'title' => t('Administer field-collections'),
-      'description' => t('Create and delete fields on field-collections.'),
+    'administer field collections' =>  array(
+      'title' => t('Administer field collections'),
+      'description' => t('Create and delete fields on field collections.'),
     ),
   );
 }
@@ -514,7 +514,7 @@ function field_collection_permission() {
  *   Whether access is allowed or not.
  */
 function field_collection_item_access($op, FieldCollectionItemEntity $item = NULL, $account = NULL) {
-  if (user_access('administer field-collections', $account)) {
+  if (user_access('administer field collections', $account)) {
     return TRUE;
   }
   if (!isset($item)) {
@@ -547,7 +547,7 @@ function field_collection_theme() {
 function field_collection_field_info() {
   return array(
     'field_collection' => array(
-      'label' => t('Field-collection'),
+      'label' => t('Field collection'),
       'description' => t('This field stores references to embedded entities, which itself may contain any number of fields.'),
       'instance_settings' => array(),
       'default_widget' => 'field_collection_hidden',
@@ -562,7 +562,7 @@ function field_collection_field_info() {
 }
 
 /**
- * Returns the base path to use for field-collection items.
+ * Returns the base path to use for field collection items.
  */
 function field_collection_field_get_path($field) {
   if (empty($field['settings']['path'])) {
@@ -574,8 +574,8 @@ function field_collection_field_get_path($field) {
 /**
  * Implements hook_field_presave().
  *
- * Support saving field-collection items in @code $item['entity'] @endcode. This
- * may be used to seamlessly create field-collection items during host-entity
+ * Support saving field collection items in @code $item['entity'] @endcode. This
+ * may be used to seamlessly create field collection items during host-entity
  * creation or to save changes to the host entity and its collections at once.
  */
 function field_collection_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
@@ -602,7 +602,7 @@ function field_collection_field_delete($entity_type, $entity, $field, $instance,
 }
 
 /**
- * Get an array of field-collection item IDs stored in the given field items.
+ * Get an array of field collection item IDs stored in the given field items.
  */
 function field_collection_field_item_to_ids($items) {
   $ids = array();
@@ -628,7 +628,7 @@ function field_collection_field_is_empty($item, $field) {
 }
 
 /**
- * Determines whether a field-collection item entity is empty based on the collection-fields.
+ * Determines whether a field collection item entity is empty based on the collection-fields.
  */
 function field_collection_item_is_empty(FieldCollectionItemEntity $item) {
   $instances = field_info_instances('field_collection_item', $item->field_name);
@@ -643,7 +643,7 @@ function field_collection_item_is_empty(FieldCollectionItemEntity $item) {
     foreach ($languages as $langcode) {
       if (!empty($item->{$field_name}[$langcode])) {
         // If at least one collection-field is not empty; the
-        // field-collection-item is not empty.
+        // field collection item is not empty.
         foreach ($item->{$field_name}[$langcode] as $field_item) {
           if (!module_invoke($field['module'], 'field_is_empty', $field_item, $field)) {
             return FALSE;
@@ -925,19 +925,19 @@ function field_collection_field_widget_form(&$form, &$form_state, $field, $insta
       return $element;
 
     case 'field_collection_embed':
-      // If the field-collection item form contains another field-collection,
+      // If the field collection item form contains another field collection,
       // we might ran into a recursive loop. Prevent that.
       if ($recursion++ > 3) {
-        drupal_set_message(t('The field-collection item form has not been embedded to avoid recursive loops.'), 'error');
+        drupal_set_message(t('The field collection item form has not been embedded to avoid recursive loops.'), 'error');
         return $element;
       }
       $field_parents = $element['#field_parents'];
       $field_name = $element['#field_name'];
       $language = $element['#language'];
 
-      // Nest the field-collection-item entity form in a dedicated parent space,
+      // Nest the field collection item entity form in a dedicated parent space,
       // by appending [field_name, langcode, delta] to the current parent space.
-      // That way the form values of the field-collection item are separated.
+      // That way the form values of the field collection item are separated.
       $parents = array_merge($field_parents, array($field_name, $language, $delta));
 
       $element += array(
@@ -1119,7 +1119,7 @@ function field_collection_remove_submit($form, &$form_state) {
 }
 
 /**
- * Gets a field-collection item entity for a given field item.
+ * Gets a field collection item entity for a given field item.
  *
  * @param $field_name
  *   (optional) If given and there is no entity yet, a new entity object is
@@ -1139,12 +1139,12 @@ function field_collection_field_get_entity(&$item, $field_name = NULL) {
 }
 
 /**
- * FAPI #after_build of an individual field-collection element to delay the validation of #required.
+ * FAPI #after_build of an individual field collection element to delay the validation of #required.
  */
 function field_collection_field_widget_embed_delay_required_validation(&$element, &$form_state) {
   // If the process_input flag is set, the form and its input is going to be
   // validated. Prevent #required (sub)fields from throwing errors while
-  // their non-#required field-collection item is empty.
+  // their non-#required field collection item is empty.
   if ($form_state['process_input']) {
     _field_collection_collect_required_elements($element, $element['#field_collection_required_elements']);
   }
@@ -1175,7 +1175,7 @@ function field_collection_field_widget_render_required($element) {
 }
 
 /**
- * FAPI validation of an individual field-collection element.
+ * FAPI validation of an individual field collection element.
  */
 function field_collection_field_widget_embed_validate($element, &$form_state, $complete_form) {
   $instance = field_widget_instance($element, $form_state);
@@ -1222,7 +1222,7 @@ function field_collection_field_widget_embed_validate($element, &$form_state, $c
       $item['_weight'] = $element['_weight']['#value'];
     }
 
-    // Put the field-collection item in $item['entity'], so it is saved with
+    // Put the field collection item in $item['entity'], so it is saved with
     // the host entity via hook_field_presave() / field API if it is not empty.
     // @see field_collection_field_presave()
     $item['entity'] = $field_collection_item;
@@ -1248,7 +1248,7 @@ function field_collection_field_create_field($field) {
  */
 function field_collection_field_delete_field($field) {
   if ($field['type'] == 'field_collection') {
-    // Notify field.module that field-collection was deleted.
+    // Notify field.module that field collection was deleted.
     field_attach_delete_bundle('field_collection_item', $field['field_name']);
 
     // Clear caches.
@@ -1271,7 +1271,7 @@ function field_collection_views_api() {
  * Implements hook_features_pipe_component_alter() for fields.
  */
 function field_collection_features_pipe_field_alter(&$pipe, $data, $export) {
-  // Add the fields of the field-collection entity to the pipe.
+  // Add the fields of the field collection entity to the pipe.
   foreach ($data as $identifier) {
     if (($field = features_field_load($identifier)) && $field['field_config']['type'] == 'field_collection') {
       $fields = field_info_instances('field_collection_item', $field['field_config']['field_name']);
@@ -1302,10 +1302,10 @@ function field_collection_entity_metadata_property_callback(&$info, $entity_type
  */
 function field_collection_item_set_host_entity($item, $property_name, $wrapper) {
   if (empty($item->is_new)) {
-    throw new EntityMetadataWrapperException('The host entity may be set only during creation of a field-collection item.');
+    throw new EntityMetadataWrapperException('The host entity may be set only during creation of a field collection item.');
   }
   if (!isset($wrapper->{$item->field_name})) {
-    throw new EntityMetadataWrapperException('The specified entity has no such field-collection field.');
+    throw new EntityMetadataWrapperException('The specified entity has no such field collection field.');
   }
   $item->setHostEntity($wrapper->type(), $wrapper->value());
 }
@@ -1319,7 +1319,7 @@ function field_collection_item_get_host_entity($item) {
 }
 
 /**
- * Entity property info getter callback for the field-collection items.
+ * Entity property info getter callback for the field collection items.
  *
  * Like entity_metadata_field_property_get(), but additionally supports getting
  * not-yet saved collection items from @code $item['entity'] @endcode.
