@@ -669,6 +669,13 @@ function field_collection_field_formatter_info() {
         'view_mode' => 'full',
       ),
     ),
+    'field_collection_fields' => array(
+      'label' => t('Fields only'),
+      'field types' => array('field_collection'),
+      'settings' =>  array(
+        'view_mode' => 'full',
+      ),
+    ),
   );
 }
 
@@ -678,34 +685,37 @@ function field_collection_field_formatter_info() {
 function field_collection_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
+  $elements = array();
 
-  $elements['edit'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Edit link title'),
-    '#default_value' => $settings['edit'],
-    '#description' => t('Leave the title empty, to hide the link.'),
-  );
-  $elements['delete'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Delete link title'),
-    '#default_value' => $settings['delete'],
-    '#description' => t('Leave the title empty, to hide the link.'),
-  );
-  $elements['add'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Add link title'),
-    '#default_value' => $settings['add'],
-    '#description' => t('Leave the title empty, to hide the link.'),
-  );
-  $elements['description'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Show the field description beside the add link.'),
-    '#default_value' => $settings['description'],
-    '#description' => t('If enabled and the add link is shown, the field description is shown in front of the add link.'),
-  );
+  if ($display['type'] !== 'field_collection_fields') {
+    $elements['edit'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Edit link title'),
+      '#default_value' => $settings['edit'],
+      '#description' => t('Leave the title empty, to hide the link.'),
+    );
+    $elements['delete'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Delete link title'),
+      '#default_value' => $settings['delete'],
+      '#description' => t('Leave the title empty, to hide the link.'),
+    );
+    $elements['add'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Add link title'),
+      '#default_value' => $settings['add'],
+      '#description' => t('Leave the title empty, to hide the link.'),
+    );
+    $elements['description'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Show the field description beside the add link.'),
+      '#default_value' => $settings['description'],
+      '#description' => t('If enabled and the add link is shown, the field description is shown in front of the add link.'),
+    );
+  }
 
   // Add a select form element for view_mode if viewing the rendered field_collection.
-  if ($display['type'] === 'field_collection_view') {
+  if ($display['type'] !== 'field_collection_list') {
 
     $entity_type = entity_get_info('field_collection_item');
     $options = array();
@@ -731,21 +741,26 @@ function field_collection_field_formatter_settings_form($field, $instance, $view
 function field_collection_field_formatter_settings_summary($field, $instance, $view_mode) {
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
+  $output = array();
 
-  $links = array_filter(array_intersect_key($settings, array_flip(array('add', 'edit', 'delete'))));
-  if ($links) {
-    $output = '<em>Links:</em> ' . check_plain(implode(', ', $links));
-  }
-  else {
-    $output =  t('Not showing any links.');
-  }
-
-  $entity_type = entity_get_info('field_collection_item');
-  if (!empty($entity_type['view modes'][$settings['view_mode']]['label'])) {
-    $output .=  " " . t('View mode: %mode', array('%mode' => $entity_type['view modes'][$settings['view_mode']]['label']));
+  if ($display['type'] !== 'field_collection_fields') {
+    $links = array_filter(array_intersect_key($settings, array_flip(array('add', 'edit', 'delete'))));
+    if ($links) {
+      $output[] = t('Links: @links', array('@links' => check_plain(implode(', ', $links))));
+    }
+    else {
+      $output[] = t('Links: none');
+    }
   }
 
-  return $output;
+  if ($display['type'] !== 'field_collection_list') {
+    $entity_type = entity_get_info('field_collection_item');
+    if (!empty($entity_type['view modes'][$settings['view_mode']]['label'])) {
+      $output[] =  t('View mode: @mode', array('@mode' => $entity_type['view modes'][$settings['view_mode']]['label']));
+    }
+  }
+
+  return implode('<br>', $output);
 }
 
 /**
@@ -773,6 +788,7 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
           $element[$delta] = array('#markup' => $output);
         }
       }
+      field_collection_field_formatter_links($element, $entity_type, $entity, $field, $instance, $langcode, $items, $display);
       break;
 
     case 'field_collection_view':
@@ -803,10 +819,19 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
           $element[$delta]['links'] = $links;
         }
       }
+      field_collection_field_formatter_links($element, $entity_type, $entity, $field, $instance, $langcode, $items, $display);
+      break;
+
+    case 'field_collection_fields':
+
+      $view_mode = !empty($display['settings']['view_mode']) ? $display['settings']['view_mode'] : 'full';
+      foreach ($items as $delta => $item) {
+        if ($field_collection = field_collection_field_get_entity($item)) {
+          $element[$delta]['entity'] = $field_collection->view($view_mode);
+        }
+      }
       break;
   }
-
-  field_collection_field_formatter_links($element, $entity_type, $entity, $field, $instance, $langcode, $items, $display);
 
   return $element;
 }
