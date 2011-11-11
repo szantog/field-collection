@@ -666,6 +666,7 @@ function field_collection_field_formatter_info() {
         'delete' => t('Delete'),
         'add' => t('Add'),
         'description' => TRUE,
+        'view_mode' => 'full',
       ),
     ),
   );
@@ -702,6 +703,25 @@ function field_collection_field_formatter_settings_form($field, $instance, $view
     '#default_value' => $settings['description'],
     '#description' => t('If enabled and the add link is shown, the field description is shown in front of the add link.'),
   );
+
+  // Add a select form element for view_mode if viewing the rendered field_collection.
+  if ($display['type'] === 'field_collection_view') {
+
+    $entity_type = entity_get_info('field_collection_item');
+    $options = array();
+    foreach ($entity_type['view modes'] as $mode => $info) {
+      $options[$mode] = $info['label'];
+    }
+
+    $elements['view_mode'] = array(
+      '#type' => 'select',
+      '#title' => t('View mode'),
+      '#options' => $options,
+      '#default_value' => $settings['view_mode'],
+      '#description' => t('Select the view mode'),
+    );
+  }
+
   return $elements;
 }
 
@@ -714,11 +734,18 @@ function field_collection_field_formatter_settings_summary($field, $instance, $v
 
   $links = array_filter(array_intersect_key($settings, array_flip(array('add', 'edit', 'delete'))));
   if ($links) {
-    return '<em>Links:</em> ' . check_plain(implode(', ', $links));
+    $output = '<em>Links:</em> ' . check_plain(implode(', ', $links));
   }
   else {
-    return t('Not showing any links.');
+    $output =  t('Not showing any links.');
   }
+
+  $entity_type = entity_get_info('field_collection_item');
+  if (!empty($entity_type['view modes'][$settings['view_mode']]['label'])) {
+    $output .=  " " . t('View mode: %mode', array('%mode' => $entity_type['view modes'][$settings['view_mode']]['label']));
+  }
+
+  return $output;
 }
 
 /**
@@ -751,12 +778,14 @@ function field_collection_field_formatter_view($entity_type, $entity, $field, $i
     case 'field_collection_view':
 
       $element['#attached']['css'][] = drupal_get_path('module', 'field_collection') . '/field_collection.theme.css';
+      $view_mode = !empty($display['settings']['view_mode']) ? $display['settings']['view_mode'] : 'full';
       foreach ($items as $delta => $item) {
         if ($field_collection = field_collection_field_get_entity($item)) {
-          $element[$delta]['entity'] = $field_collection->view();
+          $element[$delta]['entity'] = $field_collection->view($view_mode);
           $element[$delta]['#theme_wrappers'] = array('field_collection_view');
           $element[$delta]['#attributes']['class'][] = 'field-collection-view';
           $element[$delta]['#attributes']['class'][] = 'clearfix';
+          $element[$delta]['#attributes']['class'][] = drupal_clean_css_identifier('view-mode-' . $view_mode);
 
           $links = array(
             '#theme' => 'links__field_collection_view',
