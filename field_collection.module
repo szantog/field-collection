@@ -649,7 +649,7 @@ function field_collection_item_is_empty(FieldCollectionItemEntity $item) {
 function field_collection_field_formatter_info() {
   return array(
     'field_collection_list' => array(
-      'label' => t('List field-collection items'),
+      'label' => t('Links to field collection items'),
       'field types' => array('field_collection'),
       'settings' =>  array(
         'edit' => t('Edit'),
@@ -659,7 +659,7 @@ function field_collection_field_formatter_info() {
       ),
     ),
     'field_collection_view' => array(
-      'label' => t('View field-collection items'),
+      'label' => t('Field collection items'),
       'field types' => array('field_collection'),
       'settings' =>  array(
         'edit' => t('Edit'),
