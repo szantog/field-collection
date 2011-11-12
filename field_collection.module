@@ -597,6 +597,25 @@ function field_collection_field_presave($entity_type, $entity, $field, $instance
 function field_collection_field_delete($entity_type, $entity, $field, $instance, $langcode, &$items) {
   // Also delete all embedded entities.
   if ($ids = field_collection_field_item_to_ids($items)) {
+    // We need to filter out entities that are still being referenced by other
+    // host-entities.
+    $entity_info = entity_get_info($entity_type);
+    $entity_id_name = $entity_info['entity keys']['id'];
+    $field_column = key($field['columns']);
+
+    foreach ($ids as $id_key => $id) {
+      $query = new EntityFieldQuery();
+      $entities = $query
+        ->fieldCondition($field['field_name'], $field_column, $id)
+        ->execute();
+      unset($entities[$entity_type][$entity->$entity_id_name]);
+
+      if (!empty($entities[$entity_type])) {
+        // Filter this $id out.
+        unset($ids[$id_key]);
+      }
+    }
+
     entity_delete_multiple('field_collection_item', $ids);
   }
 }
