@@ -550,7 +550,7 @@ function field_collection_field_info() {
       'label' => t('Field-collection'),
       'description' => t('This field stores references to embedded entities, which itself may contain any number of fields.'),
       'instance_settings' => array(),
-      'default_widget' => 'hidden',
+      'default_widget' => 'field_collection_hidden',
       'default_formatter' => 'field_collection_view',
       // As of now there is no UI for setting the path.
       'settings' => array('path' => ''),
