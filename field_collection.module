@@ -106,9 +106,18 @@ class FieldCollectionItemEntity extends Entity {
 
   public function __construct(array $values = array(), $entityType = NULL) {
     parent::__construct($values, 'field_collection_item');
-    $field_info = $this->fieldInfo();
-    if (!$field_info || $field_info['type'] != 'field_collection') {
-      throw new Exception("Invalid field name given.");
+    // Workaround issues http://drupal.org/node/1084268 and
+    // http://drupal.org/node/1264440:
+    // Check if the required property is set before checking for the field's
+    // type. If the property is not set, we are hiting a PDO or a core's bug.
+    // FIXME: Remove when #1264440 is fixed and the required PHP version is
+    //  properly identified and documented in the module documentation.
+    if (isset($this->field_name)) {
+      // Ok, we have the field name property, we can proceed and check the field's type
+      $field_info = $this->fieldInfo();
+      if (!$field_info || $field_info['type'] != 'field_collection') {
+        throw new Exception("Invalid field name given: {$this->field_name} is not a Field Collection field.");
+      }
     }
   }
 
