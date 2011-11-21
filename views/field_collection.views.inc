@@ -24,13 +24,7 @@ function field_collection_field_views_data($field) {
       }
     }
   }
-  return $data;
-}
 
-/**
- * Implements hook_field_views_data_views_data_alter().
- */
-function field_collection_field_views_data_views_data_alter(&$data, $field) {
   foreach ($field['bundles'] as $entity_type => $bundles) {
     $entity_info = entity_get_info($entity_type);
     $pseudo_field_name = $field['field_name'] . '_' . $entity_type;
@@ -41,18 +35,18 @@ function field_collection_field_views_data_views_data_alter(&$data, $field) {
       $entity = t('Content');
     }
 
-   $title = t('Entity with the @field (@field_name)', array('@entity' => $entity, '@field' => $label, '@field_name' => $field['field_name']));
     $data['field_collection_item'][$pseudo_field_name]['relationship'] = array(
-      'title' => $title,
+      'title' => t('Entity with the @field (@field_name)', array('@entity' => $entity, '@field' => $label, '@field_name' => $field['field_name'])),
       'help' => t('Relate each @entity using @field.', array('@entity' => $entity, '@field' => $label)),
       'handler' => 'views_handler_relationship_entity_reverse',
       'field_name' => $field['field_name'],
       'field table' => _field_sql_storage_tablename($field),
-      'field field' => $field['field_name'].'_value',
+      'field field' => $field['field_name'] . '_value',
       'base' => $entity_info['base table'],
       'base field' => $entity_info['entity keys']['id'],
       'label' => t('!field_name', array('!field_name' => $field['field_name'])),
     );
-
   }
+
+  return $data;
 }
