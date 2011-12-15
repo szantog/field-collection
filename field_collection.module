@@ -974,6 +974,10 @@ function field_collection_field_widget_form(&$form, &$form_state, $field, $insta
         '#parents' => $parents,
       );
 
+      if ($field['cardinality'] == 1) {
+        $element['#type'] = 'fieldset';
+      }
+
       $field_state = field_form_get_state($field_parents, $field_name, $language, $form_state);
 
       if (isset($field_state['entity'][$delta])) {
