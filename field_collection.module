@@ -1251,7 +1251,7 @@ function field_collection_field_widget_embed_validate($element, &$form_state, $c
     field_attach_submit('field_collection_item', $field_collection_item, $element, $form_state);
 
     // Set the _weight if it is a multiple field.
-    if ($field['cardinality'] > 1 || $field['cardinality'] == FIELD_CARDINALITY_UNLIMITED) {
+    if (isset($element['_weight']) && ($field['cardinality'] > 1 || $field['cardinality'] == FIELD_CARDINALITY_UNLIMITED)) {
       $item['_weight'] = $element['_weight']['#value'];
     }
 
