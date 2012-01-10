@@ -991,6 +991,14 @@ function field_collection_field_widget_form(&$form, &$form_state, $field, $insta
         field_form_set_state($field_parents, $field_name, $language, $form_state, $field_state);
       }
 
+      // If the field collection entity did not load, we need to return nothing
+      // for the form otherwise fatal errors with entity_extract_ids() will
+      // continue in validation and save.
+      if (empty($field_collection_item)) {
+        $recursion--;
+        return array();
+      }
+
       field_attach_form('field_collection_item', $field_collection_item, $element, $form_state, $language);
 
       if (empty($element['#required'])) {
