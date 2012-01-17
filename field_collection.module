@@ -559,11 +559,16 @@ function field_collection_field_info() {
     'field_collection' => array(
       'label' => t('Field collection'),
       'description' => t('This field stores references to embedded entities, which itself may contain any number of fields.'),
-      'instance_settings' => array(),
+      'instance_settings' => array(
+        'default_value_function' => 'field_collection_default_value_function',
+      ),
       'default_widget' => 'field_collection_hidden',
       'default_formatter' => 'field_collection_view',
       // As of now there is no UI for setting the path.
-      'settings' => array('path' => ''),
+      'settings' => array(
+        'path' => '',
+        'hide_blank_items' => FALSE,
+      ),
       // Add entity property info.
       'property_type' => 'field_collection_item',
       'property_callbacks' => array('field_collection_entity_metadata_property_callback'),
@@ -572,7 +577,44 @@ function field_collection_field_info() {
 }
 
 /**
- * Returns the base path to use for field collection items.
+ * Returns zero items as default value to prevent two blank items to appear
+ * in forms when creating new nodes.
+ *
+ * Callback for default_value_function (field api) within field_collection_field_info().
+ */
+function field_collection_default_value_function($entity_type, $entity, $field, $instance, $langcode) {
+  return array();
+}
+
+/**
+ * Implements hook_field_settings_form().
+ */
+function field_collection_field_settings_form($field, $instance) {
+  // Add the the 'Hide blank items' option to the field settings of field collections.
+  $form['hide_blank_items'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hide blank items'),
+    '#default_value' => $field['settings']['hide_blank_items'],
+    '#description' => t("A blank item is always added to any multivalued field's form. If a field collection has default values or required fields, then the blank items will always undesirably be added when the node is saved. To avoid this, the blank items can be hidden with this option."),
+    '#weight' => 10,
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for field_ui_field_overview_form().
+ */
+function field_collection_form_field_ui_field_overview_form_alter(&$form, &$form_state, $display_overview = FALSE) {
+  // Add extra information for the editor about the 'Hide blank items' option.
+  if (!isset($form['#prefix'])) {
+    $form['#prefix'] = '';
+  }
+  $form['#prefix'] .= '<p class="field-collection-help">' . t("Note that if you have field collections with required fields or fields that have default values, you might consider checking the 'Hide blank items' option in the field settings of the field collection field.") . '</p>';
+}
+
+/**
+ * Returns the base path to use for field-collection items.
  */
 function field_collection_field_get_path($field) {
   if (empty($field['settings']['path'])) {
@@ -1118,8 +1160,10 @@ function field_collection_remove_submit($form, &$form_state) {
   $i = $field_state['items_count'];
   $removed_element_address = array_merge($address, array($i));
   $removed_element = drupal_array_get_nested_value($form, $removed_element_address);
-  form_set_value($removed_element, NULL, $form_state);
-  drupal_array_set_nested_value($form_state['input'], $removed_element['#parents'], NULL);
+  if (isset($removed_element)) {
+    form_set_value($removed_element, NULL, $form_state);
+    drupal_array_set_nested_value($form_state['input'], $removed_element['#parents'], NULL);
+  }
 
   // Replace the deleted entity with an empty one. This helps to ensure that
   // trying to add a new entity won't ressurect a deleted entity from the
@@ -1160,7 +1204,35 @@ function field_collection_remove_submit($form, &$form_state) {
 }
 
 /**
- * Gets a field collection item entity for a given field item.
+ * Implements hook_field_attach_form().
+ *
+ * Removes the blank items at the end of any field collection field form,
+ * if the 'hide_blank_items' option of the respective field's settings is enabled.
+ * The blank items are always added by field_widget_form and lead to
+ * problems if field_collections have default values or required fields.
+ */
+function field_collection_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
+  if (isset($form['#entity_type']) && isset($form['#bundle'])) {
+    foreach(array_keys(field_info_instances($form['#entity_type'], $form['#bundle'])) as $field_name) {
+      $field_info = field_info_field($field_name);
+      $lang = $form[$field_name]['#language'];
+
+      if ($field_info['type'] == 'field_collection' && $field_info['settings']['hide_blank_items']
+        && field_access('edit', $field_info, $entity_type)
+        && $form_state['field'][$field_name][$lang]['instance']['widget']['type'] != 'field_collection_hidden'
+        && $form[$field_name][$lang]['#max_delta'] >= 0) {
+
+        // Here we modify the $form and $form_state to remove the blank item form elements.
+        $last_index = $form[$field_name][$lang]['#max_delta']--;
+        unset($form[$field_name][$lang][$last_index]);
+        unset($form_state['field']['#parents'][$field_name][$lang][$last_index]);
+      }
+    }
+  }
+}
+
+/**
+ * Gets a field-collection item entity for a given field item.
  *
  * @param $field_name
  *   (optional) If given and there is no entity yet, a new entity object is
